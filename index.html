@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fire Station Response Time</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; }
+    #map { position: absolute; top: 50px; bottom: 0; width: 100%; }
+    #legend { position: absolute; top: 50px; right: 10px; padding: 20px; background: #fff; box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); }
+    #banner { position: absolute; top: 0; left: 0; width: 100%; background: #333; color: #fff; padding: 10px; text-align: center; font-size: 20px; }
+  </style>
+</head>
+<body>
+
+<div id="banner">Fire Station Response Time</div>
+<div id="map"></div>
+<div id="legend">
+  <h3>Calculator Tool</h3>
+  <label><input type="checkbox" id="isochrone-5"> 5 minutes</label><br>
+  <label><input type="checkbox" id="isochrone-10"> 10 minutes</label><br>
+  <label><input type="checkbox" id="isochrone-15"> 15 minutes</label>
+</div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.js"></script>
+<script>
+  mapboxgl.accessToken = 'pk.eyJ1IjoibGFuZXIiLCJhIjoiY2xwaGF5dzRoMDFqazJqbnljdTE3ZnBjZyJ9.x7T913Ja9DDRskAoIrGPXg';
+
+  var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v11',
+    center: [240, 45],
+    zoom: 6,
+  });
+
+  var legend = document.getElementById('legend');
+  var selectedPoint = null;
+  var isochroneLayers = {};
+
+  // Load GeoJSON data
+  map.on('load', function () {
+    map.addSource('points', {
+      type: 'geojson',
+      data: 'https://raw.githubusercontent.com/LaneMarsh8/firestations/main/Fire_Stations.geojson', // Replace with your GeoJSON file
+    });
+
+    map.addLayer({
+      id: 'points-layer',
+      type: 'circle',
+      source: 'points',
+      paint: {
+        'circle-radius': 8,
+        'circle-color': '#ff0000',
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2,
+      },
+    });
+
+    // Add click event listener to points layer
+    map.on('click', 'points-layer', function (e) {
+      var coordinates = e.features[0].geometry.coordinates;
+      var pointName = e.features[0].properties.NAME; // Assuming you have a 'name' property in your GeoJSON
+      showPointPopup(coordinates, pointName);
+      selectedPoint = { coordinates, pointName };
+      updateIsochroneLayers(selectedPoint);
+    });
+
+    // Add legend change event listener
+    document.querySelectorAll('#legend input[type="checkbox"]').forEach(function (checkbox) {
+      checkbox.addEventListener('change', function () {
+        if (selectedPoint) {
+          var minutes = this.id.split('-')[1];
+          toggleIsochroneVisibility(minutes, this.checked, selectedPoint);
+        }
+      });
+    });
+  });
+
+  function showPointPopup(coordinates, pointName) {
+    new mapboxgl.Popup()
+      .setLngLat(coordinates)
+      .setHTML(`<h3>${pointName}</h3>`)
+      .addTo(map);
+  }
+
+  function toggleIsochroneVisibility(minutes, show, point) {
+    var layerId = `isochrone-layer-${minutes}-${point.pointName}`;
+
+    if (show) {
+      if (!isochroneLayers[layerId]) {
+        // Fetch isochrone data only if it hasn't been fetched before
+        var isochroneURL = `https://api.mapbox.com/isochrone/v1/mapbox/driving/${point.coordinates[0]},${point.coordinates[1]}?contours_minutes=${minutes}&polygons=true&access_token=${mapboxgl.accessToken}`;
+
+        // Fetch isochrone data
+        fetch(isochroneURL)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`Failed to fetch isochrone data: ${response.status} ${response.statusText}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            // Display isochrone data on the map
+            map.addLayer({
+              id: layerId,
+              type: 'fill',
+              source: {
+                type: 'geojson',
+                data: data,
+              },
+              paint: {
+                'fill-color': getIsochroneColor(minutes),
+                'fill-opacity': 0.3,
+              },
+            });
+            isochroneLayers[layerId] = true;
+          })
+          .catch(error => {
+            console.error(`Error fetching isochrone data: ${error.message}`);
+          });
+      } else {
+        map.setLayoutProperty(layerId, 'visibility', 'visible');
+      }
+    } else {
+      // Turn off the isochrone layer
+      map.setLayoutProperty(layerId, 'visibility', 'none');
+    }
+  }
+
+  function getIsochroneColor(minutes) {
+    switch (minutes) {
+      case '5':
+        return '#00ff00';
+      case '10':
+        return '#ffff00';
+      case '15':
+        return '#ff0000';
+      default:
+        return '#ffffff';
+    }
+  }
+
+  function updateIsochroneLayers(point) {
+      var minutesValues = ['5', '10', '15'];
+
+      // Hide isochrone layers from the previous selected point
+      if (selectedPoint) {
+        minutesValues.forEach(function (minutes) {
+          var prevLayerId = `isochrone-layer-${minutes}-${selectedPoint.pointName}`;
+          if (isochroneLayers[prevLayerId]) {
+            map.setLayoutProperty(prevLayerId, 'visibility', 'none');
+          }
+        });
+      }
+
+      // Show isochrone layers for the newly selected point
+      minutesValues.forEach(function (minutes) {
+        var layerId = `isochrone-layer-${minutes}-${point.pointName}`;
+        if (isochroneLayers[layerId]) {
+          map.setLayoutProperty(layerId, 'visibility', 'visible');
+        }
+      });
+    }
+  </script>
+</body>
+</html>
+
