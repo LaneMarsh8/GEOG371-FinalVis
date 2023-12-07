@@ -57,14 +57,75 @@
       },
     });
 
-    // Add click event listener to points layer
-    map.on('click', 'points-layer', function (e) {
-      var coordinates = e.features[0].geometry.coordinates;
-      var pointName = e.features[0].properties.NAME; // Assuming you have a 'name' property in your GeoJSON
-      showPointPopup(coordinates, pointName);
-      selectedPoint = { coordinates, pointName };
-      updateIsochroneLayers(selectedPoint);
+
+    var selectedPoint = null;
+
+// Add click event listener to points layer
+map.on('click', 'points-layer', function (e) {
+  var coordinates = e.features[0].geometry.coordinates;
+  var pointName = e.features[0].properties.NAME; // Assuming you have a 'name' property in your GeoJSON
+  showPointPopup(coordinates, pointName);
+
+  // Update the selected point and its outline
+  if (selectedPoint) {
+    map.getSource('selected-point-source').setData({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: coordinates
+      }
     });
+  } else {
+    map.addLayer({
+      id: 'selected-point-outline',
+      type: 'circle',
+      source: 'selected-point-source',
+      paint: {
+        'circle-radius': 15,
+        'circle-color': 'transparent',
+        'circle-stroke-color': '#0000ff',
+        'circle-stroke-width': 2
+      }
+    });
+  }
+
+  selectedPoint = { coordinates, pointName };
+  updateIsochroneLayers(selectedPoint);
+});
+
+// Add a click event listener to the map to reset the selected point outline when clicking outside a point
+map.on('click', function (e) {
+  if (selectedPoint) {
+    var features = map.queryRenderedFeatures(e.point, { layers: ['points-layer'] });
+    if (features.length === 0) {
+      map.getSource('selected-point-source').setData({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [0, 0] // Reset coordinates to [0, 0]
+        }
+      });
+      map.removeLayer('selected-point-outline');
+      selectedPoint = null;
+      updateIsochroneLayers(selectedPoint);
+    }
+  }
+});
+
+// Add a layer for the selected point outline
+map.addSource('selected-point-source', {
+  type: 'geojson',
+  data: {
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: [0, 0] // Initial coordinates at [0, 0]
+    }
+  }
+});
+    
+
+    
 
     // Add legend change event listener
     document.querySelectorAll('#legend input[type="checkbox"]').forEach(function (checkbox) {
