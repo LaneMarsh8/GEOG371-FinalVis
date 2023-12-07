@@ -9,7 +9,7 @@
     body { margin: 0; padding: 0; overflow: hidden; }
     #map { position: absolute; top: 50px; bottom: 0; width: 100%; }
     #legend { position: absolute; top: 50px; right: 10px; padding: 20px; background: #fff; box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); }
-    #banner { position: absolute; top: 0; left: 0; width: 100%; background: #333; color: #fff; padding: 10px; text-align: center; font-size: 20px; }
+    #banner { position: absolute; top: 0; left: 0; width: 100%; background: #333; color: #fff; padding: 10px; text-align: center; font-size: 30px; }
   </style>
 </head>
 <body>
@@ -81,7 +81,7 @@ map.on('click', 'points-layer', function (e) {
       type: 'circle',
       source: 'selected-point-source',
       paint: {
-        'circle-radius': 25,
+        'circle-radius': 10,
         'circle-color': 'transparent',
         'circle-stroke-color': '#0000ff',
         'circle-stroke-width': 2
@@ -172,7 +172,7 @@ map.addSource('selected-point-source', {
               },
               paint: {
                 'fill-color': getIsochroneColor(minutes),
-                'fill-opacity': 0.3,
+                'fill-opacity': 0.5,
               },
             });
             isochroneLayers[layerId] = true;
@@ -226,4 +226,3 @@ map.addSource('selected-point-source', {
   </script>
 </body>
 </html>
-
