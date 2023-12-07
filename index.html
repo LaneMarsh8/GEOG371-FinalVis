@@ -145,49 +145,70 @@ map.addSource('selected-point-source', {
       .addTo(map);
   }
 
+
+
   function toggleIsochroneVisibility(minutes, show, point) {
-    var layerId = `isochrone-layer-${minutes}-${point.pointName}`;
+  var layerId = `isochrone-layer-${minutes}-${point.pointName}`;
 
-    if (show) {
-      if (!isochroneLayers[layerId]) {
-        // Fetch isochrone data only if it hasn't been fetched before
-        var isochroneURL = `https://api.mapbox.com/isochrone/v1/mapbox/driving/${point.coordinates[0]},${point.coordinates[1]}?contours_minutes=${minutes}&polygons=true&access_token=${mapboxgl.accessToken}`;
+  if (show) {
+    if (!isochroneLayers[layerId]) {
+      // Fetch isochrone data only if it hasn't been fetched before
+      var isochroneURL = `https://api.mapbox.com/isochrone/v1/mapbox/driving/${point.coordinates[0]},${point.coordinates[1]}?contours_minutes=${minutes}&polygons=true&access_token=${mapboxgl.accessToken}`;
 
-        // Fetch isochrone data
-        fetch(isochroneURL)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`Failed to fetch isochrone data: ${response.status} ${response.statusText}`);
-            }
-            return response.json();
-          })
-          .then(data => {
-            // Display isochrone data on the map
-            map.addLayer({
-              id: layerId,
-              type: 'fill',
-              source: {
-                type: 'geojson',
-                data: data,
-              },
-              paint: {
-                'fill-color': getIsochroneColor(minutes),
-                'fill-opacity': 0.5,
-              },
-            });
-            isochroneLayers[layerId] = true;
-          })
-          .catch(error => {
-            console.error(`Error fetching isochrone data: ${error.message}`);
-          });
-      } else {
-        map.setLayoutProperty(layerId, 'visibility', 'visible');
-      }
+      // Fetch isochrone data
+      fetch(isochroneURL)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to fetch isochrone data: ${response.status} ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Display isochrone data on the map
+          map.addLayer({
+            id: layerId,
+            type: 'fill',
+            source: {
+              type: 'geojson',
+              data: data,
+            },
+            paint: {
+              'fill-color': getIsochroneColor(minutes),
+              'fill-opacity': 0.3,
+            },
+          }, 'points-layer'); // Add the new isochrone layer after 'points-layer'
+          isochroneLayers[layerId] = true;
+        })
+        .catch(error => {
+          console.error(`Error fetching isochrone data: ${error.message}`);
+        });
     } else {
-      // Turn off the isochrone layer
-      map.setLayoutProperty(layerId, 'visibility', 'none');
+      map.setLayoutProperty(layerId, 'visibility', 'visible');
     }
+  } else {
+    // Turn off the isochrone layer
+    map.setLayoutProperty(layerId, 'visibility', 'none');
   }
+}
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   function getIsochroneColor(minutes) {
     switch (minutes) {
